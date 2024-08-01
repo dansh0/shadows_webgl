@@ -1,5 +1,14 @@
 import vertexShader from '../shaders/vertexTest.vert';
 import fragmentShader from '../shaders/fragmentTest.frag';
+import wallVertShader from '../shaders/wallVert.vert';
+import wallFragShader from '../shaders/wallFrag.frag';
+import wallStencilVertShader from '../shaders/wallStencilVert.vert';
+import wallStencilFragShader from '../shaders/wallStencilFrag.frag';
+import lightVertShader from '../shaders/lightVert.vert';
+import lightFragShader from '../shaders/lightFrag.frag';
+import getMapData from './mapData';
+import { setUpProgram, setUniform, setAttributes } from './wglUtils';
+import { getWallPositions } from './geoUtils';
 
 interface Vec3 {
     x: number;
@@ -7,12 +16,44 @@ interface Vec3 {
     z: number;
 }
 
+interface Vec2 {
+    x: number,
+    y: number
+}
+
+interface AttribBuffers {
+    aPosition: Attrib,
+    aNormal: Attrib
+}
+
+interface Attrib {
+    attribBuffer: WebGLBuffer | null,
+    numComponents: number,
+    type: number,
+    count: number,
+    location: number | null
+}
+
+interface Uniform {
+    name: string,
+    val: number | number[],
+    type: string,
+    location: WebGLUniformLocation | null
+}
+
+interface Package {
+    attribs: AttribBuffers,
+    uniforms: Uniform[],
+    program: WebGLProgram
+}
+
 class Engine {
     canvas: HTMLCanvasElement;
     gl: WebGLRenderingContext | null;
     vertexShader: string = vertexShader;
     fragmentShader: string = fragmentShader;
-    positionBuff: WebGLBuffer | null;
+    mapSize: Vec2;
+    packages: Package[];
     startTime: number;
     frameCount: number;
     lastFrameCount: number;
@@ -21,7 +62,8 @@ class Engine {
 
 
     constructor(canvas: HTMLCanvasElement, setFPS: Dispatch<SetStateAction<number>>) {
-        this.positionBuff = null;
+        this.packages = [];
+        this.mapSize = {x:1, y:1}
         this.startTime = Date.now();
         this.canvas = canvas;
         this.gl = this.canvas!.getContext('webgl');
@@ -44,20 +86,37 @@ class Engine {
         // Clear Canvas
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
+    
+        // Enable Depth Test
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+        // gl.enable(gl.DEPTH_TEST);
+        // gl.depthFunc(gl.LEQUAL);
+
+        // Cull back faces
+        // gl.enable(gl.CULL_FACE);
         
         // Set Canvas Size
         canvas.width = canvas.clientWidth; // resize to client canvas
         canvas.height = canvas.clientHeight; // resize to client canvas
         console.log(canvas.width, canvas.height);
-        gl.viewport(0, 0, canvas.width, canvas.height);
-
+        
         // Time Function
         const startTime = Date.now();
         this.getTime = () => { return Date.now() - startTime; }
-
+        
         // this.tMat.rotationX(0.1);
+        
+        // Get Map Data
+        const mapData = getMapData();
+        this.mapSize = mapData.map_size;
+        const mapWalls = mapData.objects_line_of_sight;
+        const mapLights = mapData.lights;
+        gl.viewport(0, 0, canvas.width, canvas.height);
 
-        let positions = [
+        // BACKGROUND PROGRAM
+        let mapQuadPositions = [
             -1, -1,
             1, -1,
             1, 1,
@@ -65,68 +124,182 @@ class Engine {
             1, 1,
             -1, 1, 
         ];
+        let mapQuadNormals = [
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+        ];
         
         // Set up Position Attribute
-        this.positionBuff = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuff);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
-        const posBuffSize = 2;
-        const posBuffType = gl.FLOAT;
+        let bgndBuffers = setAttributes(gl, mapQuadPositions, mapQuadNormals);
 
-        // Compile the vertex shader
-        const vShader = gl.createShader( gl['VERTEX_SHADER'] );
-        if (vShader === null) {throw Error('Cannot create vertex shader');}
-        gl.shaderSource(vShader, this.vertexShader);
-        gl.compileShader(vShader);
-        console.log(gl.getShaderInfoLog(vShader));
-
-        // Compile the fragment shaders
-        const fShader = gl.createShader( gl['FRAGMENT_SHADER'] );
-        if (fShader === null) {throw Error('Cannot create fragment shader');}
-        gl.shaderSource(fShader, this.fragmentShader);
-        gl.compileShader(fShader);
-        console.log(gl.getShaderInfoLog(fShader));
+        // Define Uniforms
+        let bgndUniforms: Uniform[] = [
+            {
+                name: 'uTime',
+                val: this.getTime(),
+                type: 'float',
+                location: null
+            },
+            {
+                name: 'uResolution',
+                val: [canvas.width, canvas.height],
+                type: 'vec2',
+                location: null
+            }
+        ];
 
         // Create Program
-        const setUpProgram = (fShader: WebGLShader) => {
+        let bgndProgram = setUpProgram(gl, this.vertexShader, this.fragmentShader, bgndBuffers, bgndUniforms);
 
-            let program = gl.createProgram();
-            if (program === null) {throw Error('Cannot create program');}
-            gl.attachShader(program, vShader);
-            gl.attachShader(program, fShader);
-            gl.linkProgram(program);
-            gl.useProgram(program);
-            
-            // Instruct Program how to use attribute data
-            // Position
-            const posAttribLocation = gl.getAttribLocation(program, 'aPosition');
-            gl.enableVertexAttribArray(posAttribLocation);
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuff);
-            gl.vertexAttribPointer( posAttribLocation, posBuffSize, posBuffType, false, 0, 0);
-            
-            // Set up Uniforms
-            let timeUniformLocation = gl.getUniformLocation(program, "uTime");
-            gl.uniform1f(timeUniformLocation, this.getTime());
-
-            let resUniformLocation = gl.getUniformLocation(program, "uResolution");
-            gl.uniform2f(resUniformLocation, canvas.width, canvas.height);
-
-            return program
+        // Package Program with Attributes and Uniforms
+        let bgndPackage: Package = {
+            attribs: bgndBuffers,
+            uniforms: bgndUniforms,
+            program: bgndProgram
         }
+        this.packages.push(bgndPackage);
 
-        let program = setUpProgram(fShader);
-        // gl.useProgram(program);
+        // WALLS STENCIL PROGRAM
 
-        // Enable Depth Test
-        // gl.enable(gl.DEPTH_TEST);
-        // gl.depthFunc(gl.LEQUAL);
+        // Get wall data ready for buffers
+        const wallStencilValues = getWallPositions(mapWalls, 0.1);
+        const wallStencilPositions = wallStencilValues[0];
+        const wallStencilNormals = wallStencilValues[1];
 
-        // Cull back faces
-        // gl.enable(gl.CULL_FACE);
+        // Set up Position Attribute
+        let wallStencilBuffers = setAttributes(gl, wallStencilPositions, wallStencilNormals);
 
-        // Draw
-        const count = Math.floor(positions.length/2);
-        gl.drawArrays(gl.TRIANGLES, 0, count); //primitive, offset, count
+        // Define Uniforms
+        let wallStencilUniforms: Uniform[] = [
+            {
+                name: 'uMapSize',
+                val: [this.mapSize.x, this.mapSize.y],
+                type: 'vec2',
+                location: null
+            },
+            {
+                name: 'uLightPoint',
+                val: [0, 0],
+                type: 'vec2',
+                location: null
+            }
+
+        ];
+
+        // Create Program
+        let wallStencilProgram = setUpProgram(gl, wallStencilVertShader, wallStencilFragShader, wallStencilBuffers, wallStencilUniforms);
+
+        // Package Program with Attributes and Uniforms
+        let wallStencilPackage: Package = {
+            attribs: wallStencilBuffers,
+            uniforms: wallStencilUniforms,
+            program: wallStencilProgram
+        }
+        this.packages.push(wallStencilPackage);
+
+
+        // WALLS PROGRAM
+
+        // Get wall data ready for buffers
+        const wallValues = getWallPositions(mapWalls, 0.1);
+        const wallPositions = wallValues[0];
+        const wallNormals = wallValues[1];
+
+        // Set up Position Attribute
+        let wallBuffers = setAttributes(gl, wallPositions, wallNormals);
+
+        // Define Uniforms
+        let wallUniforms: Uniform[] = [
+            {
+                name: 'uMapSize',
+                val: [this.mapSize.x, this.mapSize.y],
+                type: 'vec2',
+                location: null
+            },
+        ];
+
+        // Create Program
+        let wallProgram = setUpProgram(gl, wallVertShader, wallFragShader, wallBuffers, wallUniforms);
+
+        // Package Program with Attributes and Uniforms
+        let wallPackage: Package = {
+            attribs: wallBuffers,
+            uniforms: wallUniforms,
+            program: wallProgram
+        }
+        this.packages.push(wallPackage);
+
+        // LIGHT PROGRAM
+        let lightRadius = 20;
+        let lightPositions = [
+            -lightRadius, -lightRadius,
+            lightRadius, -lightRadius,
+            lightRadius, lightRadius,
+            -lightRadius, -lightRadius,
+            lightRadius, lightRadius,
+            -lightRadius, lightRadius, 
+        ];
+        let lightNormals = [
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+        ];
+
+        // Set up Position Attribute
+        let lightBuffers = setAttributes(gl, lightPositions, lightNormals);
+
+        // Define Uniforms
+        let lightUniforms: Uniform[] = [
+            {
+                name: 'uTranslate',
+                val: [0, 0],
+                type: 'vec2',
+                location: null
+            },
+            {
+                name: 'uRadius',
+                val: lightRadius,
+                type: 'float',
+                location: null
+            },
+            {
+                name: 'uMapSize',
+                val: [this.mapSize.x, this.mapSize.y],
+                type: 'vec2',
+                location: null
+            },
+            
+        ];
+
+        // Create Program
+        console.log(lightVertShader, lightFragShader)
+        let lightProgram = setUpProgram(gl, lightVertShader, lightFragShader, lightBuffers, lightUniforms);
+
+        // Package Program with Attributes and Uniforms
+        let lightPackage: Package = {
+            attribs: lightBuffers,
+            uniforms: lightUniforms,
+            program: lightProgram
+        }
+        this.packages.push(lightPackage);
+
+
+        // Intial Draw
+        this.packages.forEach(pck => {
+            gl.useProgram(pck.program);
+            gl.bindBuffer(gl.ARRAY_BUFFER, pck.attribs.aPosition.attribBuffer);
+            gl.bindBuffer(gl.ARRAY_BUFFER, pck.attribs.aNormal.attribBuffer);
+            gl.drawArrays(gl.TRIANGLES, 0, pck.attribs.aPosition.count); //primitive, offset, count
+        })
+
+        console.log(this.packages)
 
         // Animate!
         const animate = () => {
@@ -135,27 +308,56 @@ class Engine {
             this.updateFPS();
 
             // clear
-            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
             // update time
-            let currentTime = this.getTime()/1000
-            let timeUniformLocation = gl.getUniformLocation(program, "uTime");
-            gl.uniform1f(timeUniformLocation, currentTime);
-
+            this.packages[0].uniforms[0].val = this.getTime()/1000; // update uTime
+            
             // Draw frame
-            gl.drawArrays(gl.TRIANGLES, 0, count);
+            this.packages.forEach((pck, count) => {
+                // Set Program
+                gl.useProgram(pck.program);
+
+                // Position Attributes
+                let location = pck.attribs.aPosition.location;
+                if (typeof location != 'number') { throw Error('Faulty attribute location')}
+                gl.enableVertexAttribArray(location);
+                gl.bindBuffer(gl.ARRAY_BUFFER, pck.attribs.aPosition.attribBuffer);
+                gl.vertexAttribPointer( location, pck.attribs.aPosition.numComponents, pck.attribs.aPosition.type, false, 0, 0);
+
+                // Normal Attributes
+                location = pck.attribs.aNormal.location;
+                if (typeof location != 'number') { throw Error('Faulty attribute location')}
+                gl.enableVertexAttribArray(location);
+                gl.bindBuffer(gl.ARRAY_BUFFER, pck.attribs.aNormal.attribBuffer);
+                gl.vertexAttribPointer( location, pck.attribs.aNormal.numComponents, pck.attribs.aNormal.type, false, 0, 0);
+
+                // Update Uniforms
+                if (count == 0) {
+                    setUniform(this.gl, this.packages[count].uniforms[0]); // update uTime
+                } else if (count == 1) {
+                    setUniform(this.gl, this.packages[count].uniforms[1]); // update light position for walls
+                } else if (count == 3) {
+                    setUniform(this.gl, this.packages[count].uniforms[0]); // update position
+                }
+
+                // Draw
+                gl.drawArrays(gl.TRIANGLES, 0, pck.attribs.aPosition.count); //primitive, offset, count
+            })
+
             requestAnimationFrame(animate);
         }
 
         window.addEventListener("resize", () => {
+            if (!this.gl) { throw Error('Lost GL Render Context'); }
             let width = window.innerWidth;
             let height = window.innerHeight;
             canvas.style.height = height + 'px';
             canvas.style.width = width + 'px';
             canvas.width = canvas.clientWidth; // resize to client canvas
             canvas.height = canvas.clientHeight; // resize to client canvas
-            let resUniformLocation = gl.getUniformLocation(program, "uResolution");
-            gl.uniform2f(resUniformLocation, canvas.width, canvas.height);
+            this.packages[0].uniforms[1].val = [canvas.width, canvas.height]; // update uTime
+            setUniform(this.gl, this.packages[0].uniforms[1]);
         });
 
         animate();
@@ -165,9 +367,10 @@ class Engine {
         return Date.now() - this.startTime;
     }
 
-    updatePosition(height: number, forward: number, rotation: Vec3): void {
-        console.log('UDPATE')
-        console.log(height, forward, rotation)
+    updatePosition(vertical: number, horizontal: number, rotation: Vec3): void {
+        // Update light position
+        this.packages[3].uniforms[0].val = [horizontal, vertical]; // light position for light shader
+        this.packages[1].uniforms[1].val = [horizontal, vertical] // light position for walls
     }
 
     updateFPS(): void {
