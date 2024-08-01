@@ -1,0 +1,27 @@
+{
+  "name": "shadows_webgl",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "jest --config jest.config.js"
+  },
+  "dependencies": {
+    "next": "14.2.4",
+    "react": "^18",
+    "react-dom": "^18",
+    "simplex-noise": "^4.0.1"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.2",
+    "typescript": "^5"
+  }
+}
