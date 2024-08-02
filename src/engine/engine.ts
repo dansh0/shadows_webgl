@@ -9,7 +9,7 @@ import lightFragShader from '../shaders/lightFrag.frag';
 import getMapData from './mapData';
 import { setUpProgram, setUniform, setAttributes, getUniform } from './wglUtils';
 import { getWallPositions } from './geoUtils';
-import { Vec3, Vec2, Uniform, Package } from './types';
+import { Vec3, Vec2, Uniform, Package, Light } from './types';
 
 
 
@@ -19,17 +19,20 @@ class Engine {
     vertexShader: string = vertexShader;
     fragmentShader: string = fragmentShader;
     mapSize: Vec2;
+    mapLights: Light[];
     packages: Package[];
     startTime: number;
     frameCount: number;
     lastFrameCount: number;
     lastFrameTime: DOMHighResTimeStamp;
     setFPS: Dispatch<SetStateAction<number>>;
+    renderCount: number;
 
 
     constructor(canvas: HTMLCanvasElement, setFPS: Dispatch<SetStateAction<number>>) {
         this.packages = [];
-        this.mapSize = {x:1, y:1}
+        this.mapSize = {x:1, y:1};
+        this.mapLights = [];
         this.startTime = Date.now();
         this.canvas = canvas;
         this.gl = this.canvas!.getContext('webgl', {stencil: true});
@@ -37,6 +40,7 @@ class Engine {
         this.lastFrameTime = performance.now();
         this.lastFrameCount = 0;
         this.setFPS = setFPS;
+        this.renderCount = 0;
         this.init();
     }
 
@@ -44,15 +48,18 @@ class Engine {
 
         // PARAMETERS
         const wallThickness = 0.1; // Thickness of walls from zero thickness wall definition
-        let lightRadius = 10; // Radius of light (in map units)
+        const lightRadius = 20; // Radius of light (in map units)
+        const stressTest = false;
 
         const gl = this.gl;
         const canvas = this.canvas;
-
+        
         // Check Null
         if (canvas === null) { throw Error('Cannot get canvas'); }
         if (gl===null) { throw Error("Cannot get webgl context from canvas"); }
         
+        gl.viewport(0, 0, canvas.width, canvas.height);
+
         // Clear Canvas
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
@@ -87,8 +94,25 @@ class Engine {
         const mapData = getMapData();
         this.mapSize = mapData.map_size;
         const mapWalls = mapData.objects_line_of_sight;
-        const mapLights = mapData.lights;
-        gl.viewport(0, 0, canvas.width, canvas.height);
+        this.mapLights = mapData.lights;
+        if (stressTest) {
+            this.mapLights.push(...mapData.lights)
+            this.mapLights.push(...mapData.lights)
+            this.mapLights.push(...mapData.lights)
+            mapWalls.push(...mapData.objects_line_of_sight)
+            mapWalls.push(...mapData.objects_line_of_sight)
+        }
+        console.log('Number of Lights: ', this.mapLights.length+1)
+        console.log('Number of wall segments: ', mapWalls.reduce((acc, row) => acc + row.length, 0))
+
+        // Add a controllable light
+        this.mapLights.push({
+            "position": { "x": 15, "y": 15 },
+            "range": lightRadius,
+            "intensity": 0.75,
+            "color": "ffffffff",
+            "shadows": true
+        }); 
 
         // BACKGROUND PROGRAM
         let mapQuadPositions = [
@@ -224,12 +248,12 @@ class Engine {
 
         // LIGHT PROGRAM
         let lightPositions = [
-            -lightRadius, -lightRadius,
-            lightRadius, -lightRadius,
-            lightRadius, lightRadius,
-            -lightRadius, -lightRadius,
-            lightRadius, lightRadius,
-            -lightRadius, lightRadius, 
+            -1, -1,
+            1, -1,
+            1, 1,
+            -1, -1,
+            1, 1,
+            -1, 1, 
         ];
         let lightNormals = [
             0, 0,
@@ -307,6 +331,7 @@ class Engine {
         // update stats
         this.frameCount++;
         this.updateFPS();
+        this.renderCount = 0; // reset number of renders per animate frame
 
         if (!this.gl) { throw Error('Lost WebGL Render Context') }
         const gl: WebGLRenderingContext = this.gl;
@@ -320,14 +345,48 @@ class Engine {
         
         // Draw each package one by one
         this.packages.forEach(pck => {
-            this.drawPackage(gl, pck);
+            if (pck.stencil == 'none') {
+                this.drawPackage(gl, pck);
+            }
         })
+
+        let wallStencilIndex = this.packages.map(pck => pck.name).indexOf('wallStencil');
+        let lightIndex = this.packages.map(pck => pck.name).indexOf('light');
+
+        // Uniform References
+        let uTranslate = getUniform(this.packages, 'light', 'uTranslate');
+        let uRadius = getUniform(this.packages, 'light', 'uRadius');
+        let uLightPoint = getUniform(this.packages, 'wallStencil', 'uLightPoint');
+        
+        for (let iLight=0; iLight<this.mapLights.length; iLight++) {
+            let light = this.mapLights[iLight];
+            let position = light.position;
+            let centeredPos = [
+                position.x - this.mapSize.x/2,
+                position.y - this.mapSize.y/2,
+            ]
+            uRadius.val = light.range/2; // light radius
+            uTranslate.val = centeredPos; // light position for light shader
+            uLightPoint.val = centeredPos; // light position for walls
+
+            // draw stencil and light
+            this.drawPackage(gl, this.packages[wallStencilIndex]);
+            this.drawPackage(gl, this.packages[lightIndex]);
+        }
+
+        if (this.frameCount % 100 == 0) {
+            // console.log('Renders per frame:', this.renderCount)
+            // console.log(this.mapSize)
+            // console.log()
+        }
 
         requestAnimationFrame(this.animate.bind(this));
     }
 
     drawPackage(gl: WebGLRenderingContext, pck: Package): void {
         if (!pck.active) { return }
+
+        this.renderCount++;
 
         // Set Program
         gl.useProgram(pck.program);
@@ -379,6 +438,7 @@ class Engine {
         } else if (pck.name == 'wallStencil') {
             setUniform(gl, getUniform(this.packages, 'wallStencil', 'uLightPoint')); // update light position for walls
         } else if (pck.name == 'light') {
+            setUniform(gl, getUniform(this.packages, 'light', 'uRadius')); // update position
             setUniform(gl, getUniform(this.packages, 'light', 'uTranslate')); // update position
         }
 
@@ -392,11 +452,10 @@ class Engine {
 
     updatePosition(vertical: number, horizontal: number, rotation: Vec3): void {
         // Update light position
-        let uTranslate = getUniform(this.packages, 'light', 'uTranslate');
-        uTranslate.val = [horizontal, vertical]; // light position for light shader
-        
-        let uLightPoint = getUniform(this.packages, 'wallStencil', 'uLightPoint');
-        uLightPoint.val = [horizontal, vertical] // light position for walls
+        this.mapLights[this.mapLights.length-1].position = {
+            x: horizontal + this.mapSize.x/2,
+            y: vertical + this.mapSize.y/2
+        }
     }
 
     updateFPS(): void {

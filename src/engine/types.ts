@@ -38,3 +38,11 @@ export interface Package {
     hasNormals: boolean,
     stencil: string,
 }
+
+export interface Light {
+    "position": Vec2,
+    "range": number,
+    "intensity": number,
+    "color": string,
+    "shadows": boolean
+}
