@@ -1,32 +1,4 @@
-interface AttribBuffers {
-    aPosition: Attrib,
-    aNormal: Attrib
-}
-
-interface Attrib {
-    attribBuffer: WebGLBuffer | null,
-    numComponents: number,
-    type: number,
-    count: number,
-    location: number | null
-}
-
-interface Uniform {
-    name: string,
-    val: number | number[],
-    type: string,
-    location: WebGLUniformLocation | null
-}
-
-interface Package {
-    name: string,
-    active: boolean,
-    attribs: AttribBuffers,
-    uniforms: Uniform[],
-    program: WebGLProgram,
-    hasNormals: boolean,
-    stencil: string,
-}
+import { AttribBuffers, Attrib, Uniform, Package } from './types';
 
 export const setUpProgram = (gl: WebGLRenderingContext, vertexShader: string, fragmentShader: string, buffers: AttribBuffers, uniforms: Uniform[]): WebGLProgram => {
     // Sets a WebGL program based on attribute, uniform, and shader data
