@@ -7,6 +7,7 @@ varying vec2 position;
 
 void main() {
     position = aPosition;
-    vec2 translated = (aPosition + uTranslate)/(uMapSize);
-    gl_Position = vec4(translated, 1.0, 1.0);
+    vec2 translated = aPosition + uTranslate; // add light position
+    vec2 scaled = translated / (0.5 * uMapSize); // scale between -1 and 1
+    gl_Position = vec4(scaled, 1.0, 1.0);
 }

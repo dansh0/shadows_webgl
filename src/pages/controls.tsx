@@ -73,7 +73,7 @@ const RotationControls: React.FC<RotationControlsProps> = (props) => {
                         id="vertical"
                         min="-20"
                         max="20"
-                        step="1"
+                        step="0.1"
                         value={posProps.vertical}
                         onChange={
                             (event) => { posProps.setVertical(parseFloat(event.target.value)); }
@@ -87,7 +87,7 @@ const RotationControls: React.FC<RotationControlsProps> = (props) => {
                         id="horizontal"
                         min="-20"
                         max="20"
-                        step="1"
+                        step="0.1"
                         value={posProps.horizontal}
                         onChange={
                             (event) => { posProps.setHorizontal(parseFloat(event.target.value)); }

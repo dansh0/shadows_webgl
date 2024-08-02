@@ -76,6 +76,10 @@ class Engine {
 
     init(): void {
 
+        // PARAMETERS
+        const wallThickness = 0.1; // Thickness of walls from zero thickness wall definition
+        let lightRadius = 10; // Radius of light (in map units)
+
         const gl = this.gl;
         const canvas = this.canvas;
 
@@ -89,13 +93,14 @@ class Engine {
     
         // Enable Depth Test
         gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        // gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
         // gl.enable(gl.DEPTH_TEST);
         // gl.depthFunc(gl.LEQUAL);
 
         // Cull back faces
-        // gl.enable(gl.CULL_FACE);
+        gl.enable(gl.CULL_FACE);
         
         // Set Canvas Size
         canvas.width = canvas.clientWidth; // resize to client canvas
@@ -166,7 +171,7 @@ class Engine {
         // WALLS STENCIL PROGRAM
 
         // Get wall data ready for buffers
-        const wallStencilValues = getWallPositions(mapWalls, 0.1);
+        const wallStencilValues = getWallPositions(mapWalls, wallThickness, true);
         const wallStencilPositions = wallStencilValues[0];
         const wallStencilNormals = wallStencilValues[1];
 
@@ -205,9 +210,11 @@ class Engine {
         // WALLS PROGRAM
 
         // Get wall data ready for buffers
-        const wallValues = getWallPositions(mapWalls, 0.1);
+        const wallValues = getWallPositions(mapWalls, wallThickness, false);
         const wallPositions = wallValues[0];
         const wallNormals = wallValues[1];
+
+        console.log(wallValues)
 
         // Set up Position Attribute
         let wallBuffers = setAttributes(gl, wallPositions, wallNormals);
@@ -232,9 +239,9 @@ class Engine {
             program: wallProgram
         }
         this.packages.push(wallPackage);
+        
 
         // LIGHT PROGRAM
-        let lightRadius = 20;
         let lightPositions = [
             -lightRadius, -lightRadius,
             lightRadius, -lightRadius,
@@ -279,7 +286,6 @@ class Engine {
         ];
 
         // Create Program
-        console.log(lightVertShader, lightFragShader)
         let lightProgram = setUpProgram(gl, lightVertShader, lightFragShader, lightBuffers, lightUniforms);
 
         // Package Program with Attributes and Uniforms
