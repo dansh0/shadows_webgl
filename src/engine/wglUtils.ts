@@ -19,9 +19,13 @@ interface Uniform {
 }
 
 interface Package {
+    name: string,
+    active: boolean,
     attribs: AttribBuffers,
     uniforms: Uniform[],
-    program: WebGLProgram
+    program: WebGLProgram,
+    hasNormals: boolean,
+    stencil: string,
 }
 
 export const setUpProgram = (gl: WebGLRenderingContext, vertexShader: string, fragmentShader: string, buffers: AttribBuffers, uniforms: Uniform[]): WebGLProgram => {
@@ -32,14 +36,16 @@ export const setUpProgram = (gl: WebGLRenderingContext, vertexShader: string, fr
     if (vShader === null) {throw Error('Cannot create vertex shader');}
     gl.shaderSource(vShader, vertexShader);
     gl.compileShader(vShader);
-    console.log(gl.getShaderInfoLog(vShader));
+    const vLog = gl.getShaderInfoLog(vShader)
+    if (vLog != "") { console.log(vLog) } 
 
     // Compile the fragment shaders
     const fShader = gl.createShader( gl['FRAGMENT_SHADER'] );
     if (fShader === null) {throw Error('Cannot create fragment shader');}
     gl.shaderSource(fShader, fragmentShader);
     gl.compileShader(fShader);
-    console.log(gl.getShaderInfoLog(fShader));
+    const fLog = gl.getShaderInfoLog(fShader)
+    if (fLog != "") { console.log(fLog) } 
     
     let program = gl.createProgram();
     if (program === null) {throw Error('Cannot create program');}
@@ -52,16 +58,16 @@ export const setUpProgram = (gl: WebGLRenderingContext, vertexShader: string, fr
     // Position
     const posAttribLocation = gl.getAttribLocation(program, 'aPosition');
     buffers.aPosition.location = posAttribLocation;
-    gl.enableVertexAttribArray(buffers.aPosition.location);
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.aPosition.attribBuffer);
-    gl.vertexAttribPointer( buffers.aPosition.location, buffers.aPosition.numComponents, buffers.aPosition.type, false, 0, 0);
+    // gl.enableVertexAttribArray(buffers.aPosition.location);
+    // gl.bindBuffer(gl.ARRAY_BUFFER, buffers.aPosition.attribBuffer);
+    // gl.vertexAttribPointer( buffers.aPosition.location, buffers.aPosition.numComponents, buffers.aPosition.type, false, 0, 0);
 
     // Normal
     const normAttribLocation = gl.getAttribLocation(program, 'aNormal');
     buffers.aNormal.location = normAttribLocation;
-    gl.enableVertexAttribArray(buffers.aNormal.location);
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.aNormal.attribBuffer);
-    gl.vertexAttribPointer( buffers.aNormal.location, buffers.aNormal.numComponents, buffers.aNormal.type, false, 0, 0);
+    // gl.enableVertexAttribArray(buffers.aNormal.location);
+    // gl.bindBuffer(gl.ARRAY_BUFFER, buffers.aNormal.attribBuffer);
+    // gl.vertexAttribPointer( buffers.aNormal.location, buffers.aNormal.numComponents, buffers.aNormal.type, false, 0, 0);
 
 
     uniforms.forEach((uniform) => {
@@ -125,4 +131,10 @@ export const setAttributes = (gl: WebGLRenderingContext, positions: number[], no
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
 
     return attribs
+}
+
+export const getUniform = (packages: Package[], packageName: string, uniformName: string) => {
+    let pckIndex = packages.map(pck => pck.name).indexOf(packageName);
+    let uniIndex = packages[pckIndex].uniforms.map(uni => uni.name).indexOf(uniformName);
+    return packages[pckIndex].uniforms[uniIndex];
 }

@@ -7,7 +7,7 @@ import wallStencilFragShader from '../shaders/wallStencilFrag.frag';
 import lightVertShader from '../shaders/lightVert.vert';
 import lightFragShader from '../shaders/lightFrag.frag';
 import getMapData from './mapData';
-import { setUpProgram, setUniform, setAttributes } from './wglUtils';
+import { setUpProgram, setUniform, setAttributes, getUniform } from './wglUtils';
 import { getWallPositions } from './geoUtils';
 
 interface Vec3 {
@@ -42,9 +42,13 @@ interface Uniform {
 }
 
 interface Package {
+    name: string,
+    active: boolean,
     attribs: AttribBuffers,
     uniforms: Uniform[],
-    program: WebGLProgram
+    program: WebGLProgram,
+    hasNormals: boolean,
+    stencil: string,
 }
 
 class Engine {
@@ -66,7 +70,7 @@ class Engine {
         this.mapSize = {x:1, y:1}
         this.startTime = Date.now();
         this.canvas = canvas;
-        this.gl = this.canvas!.getContext('webgl');
+        this.gl = this.canvas!.getContext('webgl', {stencil: true});
         this.frameCount = 0;
         this.lastFrameTime = performance.now();
         this.lastFrameCount = 0;
@@ -101,15 +105,19 @@ class Engine {
 
         // Cull back faces
         gl.enable(gl.CULL_FACE);
+
+        // Setup Stencil
+        gl.enable(gl.STENCIL_TEST);
         
         // Set Canvas Size
         canvas.width = canvas.clientWidth; // resize to client canvas
         canvas.height = canvas.clientHeight; // resize to client canvas
+        console.log('CANVAS DIMENSIONS:')
         console.log(canvas.width, canvas.height);
         
         // Time Function
         const startTime = Date.now();
-        this.getTime = () => { return Date.now() - startTime; }
+        //this.getTime = () => { return Date.now() - startTime; }
         
         // this.tMat.rotationX(0.1);
         
@@ -162,11 +170,52 @@ class Engine {
 
         // Package Program with Attributes and Uniforms
         let bgndPackage: Package = {
+            name: 'background',
+            active: true,
             attribs: bgndBuffers,
             uniforms: bgndUniforms,
-            program: bgndProgram
+            program: bgndProgram,
+            hasNormals: false,
+            stencil: 'none'
         }
         this.packages.push(bgndPackage);
+
+
+        // WALLS PROGRAM
+
+        // Get wall data ready for buffers
+        const wallValues = getWallPositions(mapWalls, wallThickness, false);
+        const wallPositions = wallValues[0];
+        const wallNormals = wallValues[1];
+
+        // Set up Position Attribute
+        let wallBuffers = setAttributes(gl, wallPositions, wallNormals);
+
+        // Define Uniforms
+        let wallUniforms: Uniform[] = [
+            {
+                name: 'uMapSize',
+                val: [this.mapSize.x, this.mapSize.y],
+                type: 'vec2',
+                location: null
+            },
+        ];
+
+        // Create Program
+        let wallProgram = setUpProgram(gl, wallVertShader, wallFragShader, wallBuffers, wallUniforms);
+
+        // Package Program with Attributes and Uniforms
+        let wallPackage: Package = {
+            name: 'wall',
+            active: true,
+            attribs: wallBuffers,
+            uniforms: wallUniforms,
+            program: wallProgram,
+            hasNormals: false,
+            stencil: 'none'
+        }
+        this.packages.push(wallPackage);
+
 
         // WALLS STENCIL PROGRAM
 
@@ -200,45 +249,15 @@ class Engine {
 
         // Package Program with Attributes and Uniforms
         let wallStencilPackage: Package = {
+            name: 'wallStencil',
+            active: true,
             attribs: wallStencilBuffers,
             uniforms: wallStencilUniforms,
-            program: wallStencilProgram
+            program: wallStencilProgram,
+            hasNormals: true,
+            stencil: 'write'
         }
         this.packages.push(wallStencilPackage);
-
-
-        // WALLS PROGRAM
-
-        // Get wall data ready for buffers
-        const wallValues = getWallPositions(mapWalls, wallThickness, false);
-        const wallPositions = wallValues[0];
-        const wallNormals = wallValues[1];
-
-        console.log(wallValues)
-
-        // Set up Position Attribute
-        let wallBuffers = setAttributes(gl, wallPositions, wallNormals);
-
-        // Define Uniforms
-        let wallUniforms: Uniform[] = [
-            {
-                name: 'uMapSize',
-                val: [this.mapSize.x, this.mapSize.y],
-                type: 'vec2',
-                location: null
-            },
-        ];
-
-        // Create Program
-        let wallProgram = setUpProgram(gl, wallVertShader, wallFragShader, wallBuffers, wallUniforms);
-
-        // Package Program with Attributes and Uniforms
-        let wallPackage: Package = {
-            attribs: wallBuffers,
-            uniforms: wallUniforms,
-            program: wallProgram
-        }
-        this.packages.push(wallPackage);
         
 
         // LIGHT PROGRAM
@@ -290,83 +309,119 @@ class Engine {
 
         // Package Program with Attributes and Uniforms
         let lightPackage: Package = {
+            name: 'light',
+            active: true,
             attribs: lightBuffers,
             uniforms: lightUniforms,
-            program: lightProgram
+            program: lightProgram,
+            hasNormals: false,
+            stencil: 'read'
         }
         this.packages.push(lightPackage);
 
-
-        // Intial Draw
-        this.packages.forEach(pck => {
-            gl.useProgram(pck.program);
-            gl.bindBuffer(gl.ARRAY_BUFFER, pck.attribs.aPosition.attribBuffer);
-            gl.bindBuffer(gl.ARRAY_BUFFER, pck.attribs.aNormal.attribBuffer);
-            gl.drawArrays(gl.TRIANGLES, 0, pck.attribs.aPosition.count); //primitive, offset, count
-        })
-
+        console.log('PACKAGES:')
         console.log(this.packages)
 
-        // Animate!
-        const animate = () => {
-            // update stats
-            this.frameCount++;
-            this.updateFPS();
-
-            // clear
-            // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-            // update time
-            this.packages[0].uniforms[0].val = this.getTime()/1000; // update uTime
-            
-            // Draw frame
-            this.packages.forEach((pck, count) => {
-                // Set Program
-                gl.useProgram(pck.program);
-
-                // Position Attributes
-                let location = pck.attribs.aPosition.location;
-                if (typeof location != 'number') { throw Error('Faulty attribute location')}
-                gl.enableVertexAttribArray(location);
-                gl.bindBuffer(gl.ARRAY_BUFFER, pck.attribs.aPosition.attribBuffer);
-                gl.vertexAttribPointer( location, pck.attribs.aPosition.numComponents, pck.attribs.aPosition.type, false, 0, 0);
-
-                // Normal Attributes
-                location = pck.attribs.aNormal.location;
-                if (typeof location != 'number') { throw Error('Faulty attribute location')}
-                gl.enableVertexAttribArray(location);
-                gl.bindBuffer(gl.ARRAY_BUFFER, pck.attribs.aNormal.attribBuffer);
-                gl.vertexAttribPointer( location, pck.attribs.aNormal.numComponents, pck.attribs.aNormal.type, false, 0, 0);
-
-                // Update Uniforms
-                if (count == 0) {
-                    setUniform(this.gl, this.packages[count].uniforms[0]); // update uTime
-                } else if (count == 1) {
-                    setUniform(this.gl, this.packages[count].uniforms[1]); // update light position for walls
-                } else if (count == 3) {
-                    setUniform(this.gl, this.packages[count].uniforms[0]); // update position
-                }
-
-                // Draw
-                gl.drawArrays(gl.TRIANGLES, 0, pck.attribs.aPosition.count); //primitive, offset, count
-            })
-
-            requestAnimationFrame(animate);
-        }
-
         window.addEventListener("resize", () => {
-            if (!this.gl) { throw Error('Lost GL Render Context'); }
+            if (!this.gl) { throw Error('Lost WebGL Render Context'); }
             let width = window.innerWidth;
             let height = window.innerHeight;
             canvas.style.height = height + 'px';
             canvas.style.width = width + 'px';
             canvas.width = canvas.clientWidth; // resize to client canvas
             canvas.height = canvas.clientHeight; // resize to client canvas
-            this.packages[0].uniforms[1].val = [canvas.width, canvas.height]; // update uTime
+            
+            let uResolution = getUniform(this.packages, 'background', 'uResolution');
+            uResolution.val = [canvas.width, canvas.height]; // update uTime
             setUniform(this.gl, this.packages[0].uniforms[1]);
         });
 
-        animate();
+        // Start animation loop
+        this.animate();
+    }
+
+    // Animate!
+    animate(): void {
+        // update stats
+        this.frameCount++;
+        this.updateFPS();
+
+        if (!this.gl) { throw Error('Lost WebGL Render Context') }
+        const gl: WebGLRenderingContext = this.gl;
+
+        // clear
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        // update time
+        let uTime = getUniform(this.packages, 'background', 'uTime');
+        uTime.val = this.getTime()/1000; // update uTime
+        
+        // Draw each package one by one
+        this.packages.forEach(pck => {
+            this.drawPackage(gl, pck);
+        })
+
+        requestAnimationFrame(this.animate.bind(this));
+    }
+
+    drawPackage(gl: WebGLRenderingContext, pck: Package): void {
+        if (!pck.active) { return }
+
+        // Set Program
+        gl.useProgram(pck.program);
+
+        // Stencil Settings
+        switch (pck.stencil) {
+            case 'none':
+                // For programs not related to the stencil
+                gl.stencilFunc(gl.ALWAYS, 1, 0xFF); // Always pass
+                gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP); // Do not change stencil buffer
+                gl.colorMask(true, true, true, true); // Enable color writing
+                break;
+            case 'write':
+                // For programs that write to the stencil buffer (e.g. shadow mask)
+                gl.clear(gl.STENCIL_BUFFER_BIT); // Clear stencil buffer
+                gl.stencilFunc(gl.ALWAYS, 1, 0xFF); // Always pass
+                gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE); // Write to stencil buffer
+                gl.colorMask(false, false, false, false); // Disable color writing
+                break;
+            case 'read':
+                // For programs that want to be masked by the stencil buffer (e.g. light)
+                gl.stencilFunc(gl.NOTEQUAL, 1, 0xFF); // Render where the stencil value is not 1
+                gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP); // Do not change stencil buffer
+                gl.colorMask(true, true, true, true); // Enable color writing
+                break;
+        }
+
+        // Position Attributes
+        let location = pck.attribs.aPosition.location;
+        if (typeof location != 'number') { throw Error('Faulty attribute location')}
+        gl.enableVertexAttribArray(location);
+        gl.bindBuffer(gl.ARRAY_BUFFER, pck.attribs.aPosition.attribBuffer);
+        gl.vertexAttribPointer( location, pck.attribs.aPosition.numComponents, pck.attribs.aPosition.type, false, 0, 0);
+
+        // Normal Attributes
+        if (pck.hasNormals) {
+            // only add normals if they are used
+            location = pck.attribs.aNormal.location;
+            if (typeof location != 'number') { throw Error('Faulty attribute location')}
+            gl.enableVertexAttribArray(location);
+            gl.bindBuffer(gl.ARRAY_BUFFER, pck.attribs.aNormal.attribBuffer);
+            gl.vertexAttribPointer( location, pck.attribs.aNormal.numComponents, pck.attribs.aNormal.type, false, 0, 0);
+        }
+
+        // Update Uniforms
+        if (pck.name == 'background') {
+            setUniform(gl, getUniform(this.packages, 'background', 'uResolution')); // update uResolution
+            setUniform(gl, getUniform(this.packages, 'background', 'uTime')); // update uTime
+        } else if (pck.name == 'wallStencil') {
+            setUniform(gl, getUniform(this.packages, 'wallStencil', 'uLightPoint')); // update light position for walls
+        } else if (pck.name == 'light') {
+            setUniform(gl, getUniform(this.packages, 'light', 'uTranslate')); // update position
+        }
+
+        // Draw
+        gl.drawArrays(gl.TRIANGLES, 0, pck.attribs.aPosition.count); //primitive, offset, count
     }
 
     getTime(): number {
@@ -375,8 +430,11 @@ class Engine {
 
     updatePosition(vertical: number, horizontal: number, rotation: Vec3): void {
         // Update light position
-        this.packages[3].uniforms[0].val = [horizontal, vertical]; // light position for light shader
-        this.packages[1].uniforms[1].val = [horizontal, vertical] // light position for walls
+        let uTranslate = getUniform(this.packages, 'light', 'uTranslate');
+        uTranslate.val = [horizontal, vertical]; // light position for light shader
+        
+        let uLightPoint = getUniform(this.packages, 'wallStencil', 'uLightPoint');
+        uLightPoint.val = [horizontal, vertical] // light position for walls
     }
 
     updateFPS(): void {
