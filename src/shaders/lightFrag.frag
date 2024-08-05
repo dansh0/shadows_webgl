@@ -36,5 +36,5 @@ void main()
     // Combine light values
     float strength = att * coneEffect * uIntensity;
 
-    gl_FragColor = vec4(uColor * strength, strength);
+    gl_FragColor = vec4(uColor * strength, att);
 }

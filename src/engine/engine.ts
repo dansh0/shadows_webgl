@@ -54,7 +54,7 @@ class Engine {
 
         // PARAMETERS
         const wallThickness = 0.1; // Thickness of walls from zero thickness wall definition
-        const lightRadius = 10; // Radius of light (in map units)
+        const lightRadius = 25; // Radius of light (in map units)
         const stressTest = false;
 
         const gl = this.gl;
@@ -110,8 +110,26 @@ class Engine {
             })
         })
         if (stressTest) {
-            this.mapLights.push(...this.mapLights)
-            this.mapLights.push(...this.mapLights)
+            mapData.lights.forEach((light) => {
+                this.mapLights.push({
+                    ...light,
+                    "position": {'x': light.position.x + 2, 'y': light.position.y - 2},
+                    "angle": 0,
+                    "rotation": 0
+                })
+                this.mapLights.push({
+                    ...light,
+                    "position": {'x': light.position.x + 5, 'y': light.position.y - 1},
+                    "angle": 0,
+                    "rotation": 0
+                })
+                this.mapLights.push({
+                    ...light,
+                    "position": {'x': light.position.x - 4, 'y': light.position.y + 2},
+                    "angle": 0,
+                    "rotation": 0
+                })
+            })
             mapWalls.push(...mapData.objects_line_of_sight)
             mapWalls.push(...mapData.objects_line_of_sight)
         }
@@ -495,9 +513,11 @@ class Engine {
             x: horizontal + this.mapSize.x/2,
             y: vertical + this.mapSize.y/2
         }
-        console.log(rotation)
         controllableLight.angle = rotation.x * (Math.PI/180);
         controllableLight.rotation = rotation.y * (Math.PI/180);
+        let lightPackageIndex = this.packages.map(pck => pck.name).indexOf('light');
+        if (rotation.z > 180) { this.packages[lightPackageIndex].active = false }
+        else {  this.packages[lightPackageIndex].active = true }
     }
 
     updateFPS(): void {

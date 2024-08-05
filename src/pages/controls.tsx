@@ -27,6 +27,9 @@ const RotationControls: React.FC<RotationControlsProps> = (props) => {
         // create copy, set value, trigger event
         const newRotation = { ...posProps.rotation }; 
         newRotation[axis] = parseFloat(event.target.value);
+        if (axis == 'z') {
+            newRotation.z = (posProps.rotation.z > 180) ? 0 : 360; 
+        }
         posProps.setRotation(newRotation);
     };
 
@@ -93,6 +96,16 @@ const RotationControls: React.FC<RotationControlsProps> = (props) => {
                             (event) => { posProps.setHorizontal(parseFloat(event.target.value)); }
                         }
                     />
+                </div>
+                <div className="toggle-control">
+                    <label>
+                        Light On/Off
+                        <input
+                            type="checkbox"
+                            checked={posProps.rotation.z === 360}
+                            onChange={handleSliderChange('z')}
+                        />
+                    </label>
                 </div>
                 <h5>Stats</h5>
                 <div className="fps">
