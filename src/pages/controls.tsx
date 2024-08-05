@@ -42,20 +42,20 @@ const RotationControls: React.FC<RotationControlsProps> = (props) => {
             </div>
             <div className="controls-content">
                 <h5>Light Position</h5>
-                {/* <div className="control">
-                    <label>Phi: {posProps.rotation.x}°</label>
+                <div className="control">
+                    <label>Angle: {posProps.rotation.x}°</label>
                     <input
                         type="range"
                         id="x-axis"
                         min="0"
-                        max="90"
+                        max="180"
                         step="5"
                         value={posProps.rotation.x}
                         onChange={handleSliderChange('x')}
                     />
                 </div>
                 <div className="control">
-                    <label>Theta: {posProps.rotation.y}°</label>
+                    <label>Rot: {posProps.rotation.y}°</label>
                     <input
                         type="range"
                         id="y-axis"
@@ -65,7 +65,7 @@ const RotationControls: React.FC<RotationControlsProps> = (props) => {
                         value={posProps.rotation.y}
                         onChange={handleSliderChange('y')}
                     />
-                </div> */}
+                </div>
                 <div className="control">
                     <label>Vert: {posProps.vertical}</label>
                     <input

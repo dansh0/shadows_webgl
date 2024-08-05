@@ -10,7 +10,7 @@ interface Vec3 {
 }
 
 export default function Home() {
-  const [rotation, setRotation] = useState<Vec3>({ x: 20, y: 0, z: 0 });
+  const [rotation, setRotation] = useState<Vec3>({ x: 0, y: 0, z: 0 });
   const [vertical, setVertical] = useState<number>(3);
   const [horizontal, setHorizontal] = useState<number>(0);
   const [fps, setFPS] = useState<number>(0);

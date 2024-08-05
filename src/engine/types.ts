@@ -42,6 +42,8 @@ export interface Package {
 export interface Light {
     "position": Vec2,
     "range": number,
+    "angle": number,
+    "rotation": number,
     "intensity": number,
     "color": string,
     "shadows": boolean

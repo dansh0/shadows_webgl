@@ -27,6 +27,7 @@ class Engine {
     lastFrameTime: DOMHighResTimeStamp;
     setFPS: Dispatch<SetStateAction<number>>;
     renderCount: number;
+    img: HTMLImageElement;
 
 
     constructor(canvas: HTMLCanvasElement, setFPS: Dispatch<SetStateAction<number>>) {
@@ -41,14 +42,19 @@ class Engine {
         this.lastFrameCount = 0;
         this.setFPS = setFPS;
         this.renderCount = 0;
-        this.init();
+        this.img = new Image();
+
+        this.img.src = './PigAndWhistle.png';
+        this.img.onload = () => {
+            this.init();
+        }
     }
 
     init(): void {
 
         // PARAMETERS
         const wallThickness = 0.1; // Thickness of walls from zero thickness wall definition
-        const lightRadius = 20; // Radius of light (in map units)
+        const lightRadius = 10; // Radius of light (in map units)
         const stressTest = false;
 
         const gl = this.gl;
@@ -58,29 +64,30 @@ class Engine {
         if (canvas === null) { throw Error('Cannot get canvas'); }
         if (gl===null) { throw Error("Cannot get webgl context from canvas"); }
         
-        gl.viewport(0, 0, canvas.width, canvas.height);
-
+        console.log(this.img)
+        
         // Clear Canvas
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
-    
+        
         // Enable Depth Test
         gl.enable(gl.BLEND);
-        // gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+        //gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        
         // gl.enable(gl.DEPTH_TEST);
         // gl.depthFunc(gl.LEQUAL);
-
+        
         // Cull back faces
         gl.enable(gl.CULL_FACE);
-
+        
         // Setup Stencil
         gl.enable(gl.STENCIL_TEST);
         
         // Set Canvas Size
         canvas.width = canvas.clientWidth; // resize to client canvas
         canvas.height = canvas.clientHeight; // resize to client canvas
+        gl.viewport(0, 0, canvas.width, canvas.height);
         console.log('CANVAS DIMENSIONS:')
         console.log(canvas.width, canvas.height);
         
@@ -94,11 +101,17 @@ class Engine {
         const mapData = getMapData();
         this.mapSize = mapData.map_size;
         const mapWalls = mapData.objects_line_of_sight;
-        this.mapLights = mapData.lights;
+        this.mapLights = [];
+        mapData.lights.forEach((light) => {
+            this.mapLights.push({
+                ...light,
+                "angle": 0,
+                "rotation": 0
+            })
+        })
         if (stressTest) {
-            this.mapLights.push(...mapData.lights)
-            this.mapLights.push(...mapData.lights)
-            this.mapLights.push(...mapData.lights)
+            this.mapLights.push(...this.mapLights)
+            this.mapLights.push(...this.mapLights)
             mapWalls.push(...mapData.objects_line_of_sight)
             mapWalls.push(...mapData.objects_line_of_sight)
         }
@@ -109,8 +122,10 @@ class Engine {
         this.mapLights.push({
             "position": { "x": 15, "y": 15 },
             "range": lightRadius,
-            "intensity": 0.75,
-            "color": "ffffffff",
+            "intensity": 1.0,
+            "color": "ffff48",
+            "angle": Math.PI/4,
+            "rotation": 0,
             "shadows": true
         }); 
 
@@ -154,6 +169,20 @@ class Engine {
         // Create Program
         let bgndProgram = setUpProgram(gl, this.vertexShader, this.fragmentShader, bgndBuffers, bgndUniforms);
 
+        // Add background texture
+        const bgndImage = gl.createTexture()
+        gl.bindTexture(gl.TEXTURE_2D, bgndImage);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.img);
+        gl.generateMipmap(gl.TEXTURE_2D);
+        const uImage = gl.getUniformLocation(bgndProgram, 'uImage');
+        // gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, bgndImage);
+        gl.uniform1i(uImage, 0);
+
         // Package Program with Attributes and Uniforms
         let bgndPackage: Package = {
             name: 'background',
@@ -193,7 +222,7 @@ class Engine {
         // Package Program with Attributes and Uniforms
         let wallPackage: Package = {
             name: 'wall',
-            active: true,
+            active: false,
             attribs: wallBuffers,
             uniforms: wallUniforms,
             program: wallProgram,
@@ -209,6 +238,8 @@ class Engine {
         const wallStencilValues = getWallPositions(mapWalls, wallThickness, true);
         const wallStencilPositions = wallStencilValues[0];
         const wallStencilNormals = wallStencilValues[1];
+
+        
 
         // Set up Position Attribute
         let wallStencilBuffers = setAttributes(gl, wallStencilPositions, wallStencilNormals);
@@ -269,24 +300,13 @@ class Engine {
 
         // Define Uniforms
         let lightUniforms: Uniform[] = [
-            {
-                name: 'uTranslate',
-                val: [0, 0],
-                type: 'vec2',
-                location: null
-            },
-            {
-                name: 'uRadius',
-                val: lightRadius,
-                type: 'float',
-                location: null
-            },
-            {
-                name: 'uMapSize',
-                val: [this.mapSize.x, this.mapSize.y],
-                type: 'vec2',
-                location: null
-            },
+            { name: 'uTranslate', val: [0, 0], type: 'vec2', location: null},
+            { name: 'uRadius', val: lightRadius, type: 'float', location: null},
+            { name: 'uAngle', val: 0, type: 'float', location: null},
+            { name: 'uRotation', val: 0, type: 'float', location: null},
+            { name: 'uColor', val: [1, 1, 1], type: 'vec3', location: null},
+            { name: 'uIntensity', val: 0.5, type: 'float', location: null},
+            { name: 'uMapSize', val: [this.mapSize.x, this.mapSize.y], type: 'vec2', location: null},
             
         ];
 
@@ -356,6 +376,10 @@ class Engine {
         // Uniform References
         let uTranslate = getUniform(this.packages, 'light', 'uTranslate');
         let uRadius = getUniform(this.packages, 'light', 'uRadius');
+        let uColor = getUniform(this.packages, 'light', 'uColor');
+        let uIntensity = getUniform(this.packages, 'light', 'uIntensity');
+        let uAngle = getUniform(this.packages, 'light', 'uAngle');
+        let uRotation = getUniform(this.packages, 'light', 'uRotation');
         let uLightPoint = getUniform(this.packages, 'wallStencil', 'uLightPoint');
         
         for (let iLight=0; iLight<this.mapLights.length; iLight++) {
@@ -365,9 +389,18 @@ class Engine {
                 position.x - this.mapSize.x/2,
                 position.y - this.mapSize.y/2,
             ]
-            uRadius.val = light.range/2; // light radius
+            let lightColor = [
+                parseInt(light.color.substring(0, 2), 16) / 255, 
+                parseInt(light.color.substring(2, 4), 16) / 255, 
+                parseInt(light.color.substring(4, 6), 16) / 255
+            ]
+            uRadius.val = light.range; // light radius
             uTranslate.val = centeredPos; // light position for light shader
             uLightPoint.val = centeredPos; // light position for walls
+            uColor.val = lightColor;
+            uIntensity.val = light.intensity;
+            uAngle.val = light.angle;
+            uRotation.val = light.rotation;
 
             // draw stencil and light
             this.drawPackage(gl, this.packages[wallStencilIndex]);
@@ -438,8 +471,12 @@ class Engine {
         } else if (pck.name == 'wallStencil') {
             setUniform(gl, getUniform(this.packages, 'wallStencil', 'uLightPoint')); // update light position for walls
         } else if (pck.name == 'light') {
-            setUniform(gl, getUniform(this.packages, 'light', 'uRadius')); // update position
+            setUniform(gl, getUniform(this.packages, 'light', 'uRadius')); // update light range
             setUniform(gl, getUniform(this.packages, 'light', 'uTranslate')); // update position
+            setUniform(gl, getUniform(this.packages, 'light', 'uColor')); // update color
+            setUniform(gl, getUniform(this.packages, 'light', 'uIntensity')); // update intensity
+            setUniform(gl, getUniform(this.packages, 'light', 'uAngle')); // update cone angle
+            setUniform(gl, getUniform(this.packages, 'light', 'uRotation')); // update rotation of cone
         }
 
         // Draw
@@ -451,11 +488,16 @@ class Engine {
     }
 
     updatePosition(vertical: number, horizontal: number, rotation: Vec3): void {
+        if (!this.mapLights || this.mapLights.length == 0) { return }
         // Update light position
-        this.mapLights[this.mapLights.length-1].position = {
+        let controllableLight = this.mapLights[this.mapLights.length-1];
+        controllableLight.position = {
             x: horizontal + this.mapSize.x/2,
             y: vertical + this.mapSize.y/2
         }
+        console.log(rotation)
+        controllableLight.angle = rotation.x * (Math.PI/180);
+        controllableLight.rotation = rotation.y * (Math.PI/180);
     }
 
     updateFPS(): void {
