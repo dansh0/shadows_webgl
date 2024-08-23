@@ -20,6 +20,7 @@ class Engine {
     fragmentShader: string = fragmentShader;
     mapSize: Vec2;
     mapLights: Light[];
+    mapWalls: Vec2[][];
     packages: Package[];
     startTime: number;
     frameCount: number;
@@ -34,6 +35,7 @@ class Engine {
         this.packages = [];
         this.mapSize = {x:1, y:1};
         this.mapLights = [];
+        this.mapWalls = [];
         this.startTime = Date.now();
         this.canvas = canvas;
         this.gl = this.canvas!.getContext('webgl', {stencil: true});
@@ -54,7 +56,7 @@ class Engine {
 
         // PARAMETERS
         const wallThickness = 0.1; // Thickness of walls from zero thickness wall definition
-        const lightRadius = 25; // Radius of light (in map units)
+        const lightRadius = 5; // Radius of light (in map units)
         const stressTest = false;
 
         const gl = this.gl;
@@ -100,7 +102,7 @@ class Engine {
         // Get Map Data
         const mapData = getMapData();
         this.mapSize = mapData.map_size;
-        const mapWalls = mapData.objects_line_of_sight;
+        this.mapWalls = mapData.objects_line_of_sight;
         this.mapLights = [];
         mapData.lights.forEach((light) => {
             this.mapLights.push({
@@ -130,19 +132,19 @@ class Engine {
                     "rotation": 0
                 })
             })
-            mapWalls.push(...mapData.objects_line_of_sight)
-            mapWalls.push(...mapData.objects_line_of_sight)
+            this.mapWalls.push(...mapData.objects_line_of_sight)
+            this.mapWalls.push(...mapData.objects_line_of_sight)
         }
         console.log('Number of Lights: ', this.mapLights.length+1)
-        console.log('Number of wall segments: ', mapWalls.reduce((acc, row) => acc + row.length, 0))
+        console.log('Number of wall segments: ', this.mapWalls.reduce((acc, row) => acc + row.length, 0))
 
         // Add a controllable light
         this.mapLights.push({
-            "position": { "x": 15, "y": 15 },
+            "position": { "x": this.mapSize.x/2, "y": this.mapSize.y/2 },
             "range": lightRadius,
             "intensity": 1.0,
             "color": "ffff48",
-            "angle": Math.PI/4,
+            "angle": 0,
             "rotation": 0,
             "shadows": true
         }); 
@@ -217,7 +219,7 @@ class Engine {
         // WALLS PROGRAM
 
         // Get wall data ready for buffers
-        const wallValues = getWallPositions(mapWalls, wallThickness, false);
+        const wallValues = getWallPositions(this.mapWalls, wallThickness, false);
         const wallPositions = wallValues[0];
         const wallNormals = wallValues[1];
 
@@ -253,11 +255,9 @@ class Engine {
         // WALLS STENCIL PROGRAM
 
         // Get wall data ready for buffers
-        const wallStencilValues = getWallPositions(mapWalls, wallThickness, true);
+        const wallStencilValues = getWallPositions(this.mapWalls, wallThickness, true);
         const wallStencilPositions = wallStencilValues[0];
         const wallStencilNormals = wallStencilValues[1];
-
-        
 
         // Set up Position Attribute
         let wallStencilBuffers = setAttributes(gl, wallStencilPositions, wallStencilNormals);
@@ -380,6 +380,21 @@ class Engine {
         // update time
         let uTime = getUniform(this.packages, 'background', 'uTime');
         uTime.val = this.getTime()/1000; // update uTime
+
+        // update wall segments
+        // Get wall data ready for buffers
+        const wallStencilValues = getWallPositions(this.mapWalls, 0.1, true);
+        const wallStencilPositions = wallStencilValues[0];
+        const wallStencilNormals = wallStencilValues[1];
+        let wallStencilIndex = this.packages.map(pck => pck.name).indexOf('wallStencil');
+
+        // Bind Positions
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.packages[wallStencilIndex].attribs.aPosition.attribBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(wallStencilPositions), gl.STATIC_DRAW);
+
+        // Bind Normals
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.packages[wallStencilIndex].attribs.aNormal.attribBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(wallStencilNormals), gl.STATIC_DRAW);
         
         // Draw each package one by one
         this.packages.forEach(pck => {
@@ -388,7 +403,7 @@ class Engine {
             }
         })
 
-        let wallStencilIndex = this.packages.map(pck => pck.name).indexOf('wallStencil');
+        // let wallStencilIndex = this.packages.map(pck => pck.name).indexOf('wallStencil');
         let lightIndex = this.packages.map(pck => pck.name).indexOf('light');
 
         // Uniform References
