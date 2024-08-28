@@ -1,6 +1,5 @@
 import { useState } from "react";
-import Head from "next/head";
-import WebGLCanvas from "@/engine/graphicsCanvas";
+import WebGLCanvas from "./engine/graphicsCanvas";
 import RotationControls from "./controls";
 
 interface Vec3 {
@@ -27,12 +26,6 @@ export default function Home() {
 
   return (
     <>
-      <Head>
-        <title>WebGL Shadows</title>
-        <meta name="description" content="Shadows Demo with WebGL" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
       <WebGLCanvas rotation={rotation} vertical={vertical} horizontal={horizontal} setFPS={setFPS}/>
       <RotationControls posProps={posProps}/>
     </>
