@@ -7,34 +7,6 @@ export const getWallPositions = (mapWalls: Vec2[][], wallThickness: number, shad
     let positions = [];
     let normals = [];
 
-    // DEBUG
-    let debug = false;
-    if (debug) {
-        // positions = [ 
-        //     10, 10,  20, 10,  20, 20, 
-        //     10, 10,  20, 20,  10, 20,
-        //     10, 10, 10, 10, 20, 10,
-        //     20, 10, 20, 10, 20, 20,
-        //     20, 20, 20, 20, 10, 20,
-        //     10, 20, 10, 20, 10, 10,
-        // ];
-        // normals = [
-        //     -1, 0, 0, -1, 1, 0,
-        //     -1, 0, 1, 0, 0, 1,
-        //     -1, 0, 0, -1, 0, -1,
-        //     0, -1, 1, 0, 1, 0,
-        //     1, 0, 0, 1, 0, 1,
-        //     0, 1, -1, 0, -1, 0,
-        // ];
-        // return [positions, normals]
-        mapWalls = [[
-            {x: 10, y: 10},
-            {x: 20, y: 10},
-            {x: 20, y: 20}
-        ]]
-    }
-
-
     let lastSegPoint, segPoint;
     for (let iWall = 0; iWall<mapWalls.length; iWall++) {
         for (let iSeg = 0; iSeg<mapWalls[iWall].length; iSeg++) {
@@ -90,10 +62,6 @@ export const getWallPositions = (mapWalls: Vec2[][], wallThickness: number, shad
                         ...vert3, ...vert3, ...vert0
                     ]);
                 }
-
-            // quick hypotenuse maths
-            let hypLen = Math.sqrt(Math.pow(dy-dx, 2) + Math.pow(dx+dy, 2));
-
 
                 let upNorm = [-dy, dx]; // normal of 0_1 edge
                 let rightNorm = [dx, dy]; // normal of 1_2 edge

@@ -1,4 +1,4 @@
-import { AttribBuffers, Attrib, Uniform, Package, RenderTarget } from './types';
+import { AttribBuffers, Uniform, Package, RenderTarget } from './types';
 
 export const setUpProgram = (gl: WebGLRenderingContext, vertexShader: string, fragmentShader: string, buffers: AttribBuffers, uniforms: Uniform[]): WebGLProgram => {
     // Sets a WebGL program based on attribute, uniform, and shader data

@@ -76,8 +76,9 @@ class Engine {
         let isRotating = false;
 
         document.addEventListener('mousemove', (event: MouseEvent) => {
-            const mouseX = event.clientX/canvas.width * this.mapSize.x - this.mapSize.x/2;
-            const mouseY = (1 - event.clientY/canvas.height) * this.mapSize.y - this.mapSize.y/2;
+
+            const mouseX = event.offsetX/canvas.width * this.mapSize.x - this.mapSize.x/2;
+            const mouseY = (1 - event.offsetY/canvas.height) * this.mapSize.y - this.mapSize.y/2;
             
             if (!isRotating) {
                 // move light
@@ -96,16 +97,6 @@ class Engine {
                 controllableLight.angle = cheapLength / (2*Math.PI);
             }
         });
-
-        window.addEventListener('resize', () => {
-            canvas.width = canvas.clientWidth; // resize to client canvas
-            canvas.height = canvas.clientHeight; // resize to client canvas
-            gl.viewport(0, 0, canvas.width, canvas.height);
-            if (this.renderTarget) {
-                updateRenderTarget(gl, this.renderTarget, canvas.width, canvas.height)
-            }
-        });
-
 
         document.addEventListener('keydown', (event: KeyboardEvent) => {
             if (event.key === 'r' || event.key === 'R') {
@@ -126,10 +117,6 @@ class Engine {
         // Enable Depth Test
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-        //gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-        
-        // gl.enable(gl.DEPTH_TEST);
-        // gl.depthFunc(gl.LEQUAL);
         
         // Cull back faces
         gl.enable(gl.CULL_FACE);
@@ -142,13 +129,7 @@ class Engine {
         canvas.height = canvas.clientHeight; // resize to client canvas
         gl.viewport(0, 0, canvas.width, canvas.height);
         console.log('CANVAS DIMENSIONS:')
-        console.log(canvas.width, canvas.height);
-        
-        // Time Function
-        const startTime = Date.now();
-        //this.getTime = () => { return Date.now() - startTime; }
-        
-        // this.tMat.rotationX(0.1);
+        console.log(canvas.width, canvas.height);      
         
         // Get Map Data
         const mapData = getMapData();
@@ -400,19 +381,29 @@ class Engine {
         console.log('PACKAGES:')
         console.log(this.packages)
 
-        window.addEventListener("resize", () => {
+        // function to resize window properly
+        const resizeWindow = () => {
             if (!this.gl) { throw Error('Lost WebGL Render Context'); }
             let width = window.innerWidth;
-            let height = window.innerHeight;
-            canvas.style.height = height + 'px';
+            let height = Math.floor(width * 0.68726);
+            // let height = window.innerHeight;
             canvas.style.width = width + 'px';
-            canvas.width = canvas.clientWidth; // resize to client canvas
-            canvas.height = canvas.clientHeight; // resize to client canvas
-            
+            canvas.style.height = height + 'px';
+            canvas.width = width; //canvas.clientWidth; // resize to client canvas
+            canvas.height = height; //canvas.clientHeight; // resize to client canvas
+            gl.viewport(0, 0, canvas.width, canvas.height);
+            if (this.renderTarget) {
+                updateRenderTarget(gl, this.renderTarget, canvas.width, canvas.height)
+            }
             let uResolution = getUniform(this.packages, 'background', 'uResolution');
             uResolution.val = [canvas.width, canvas.height]; // update uTime
             setUniform(this.gl, this.packages[0].uniforms[1]);
-        });
+            
+        }
+
+        // Run resize immediately after init and anytime a resize event triggers
+        setTimeout(resizeWindow, 0);
+        window.addEventListener("resize", resizeWindow);
 
         // Start animation loop
         this.animate();
@@ -500,13 +491,6 @@ class Engine {
         gl.blendFunc(gl.ONE, gl.ZERO);
         this.drawPackage(gl, this.packages[bgndIndex]);
         
-
-        if (this.frameCount % 100 == 0) {
-            // console.log('Renders per frame:', this.renderCount)
-            // console.log(this.mapSize)
-            // console.log()
-        }
-
         requestAnimationFrame(this.animate.bind(this));
     }
 
@@ -594,7 +578,6 @@ class Engine {
         }
         controllableLight.angle = rotation.x * (Math.PI/180);
         controllableLight.rotation = rotation.y * (Math.PI/180);
-        let lightPackageIndex = this.packages.map(pck => pck.name).indexOf('light');
         if (rotation.z > 180) { this.renderLightsBool = false }
         else {  this.renderLightsBool = true }
     }
