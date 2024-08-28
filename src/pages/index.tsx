@@ -10,7 +10,7 @@ interface Vec3 {
 }
 
 export default function Home() {
-  const [rotation, setRotation] = useState<Vec3>({ x: 0, y: 0, z: 0 });
+  const [rotation, setRotation] = useState<Vec3>({ x: 30, y: -135, z: 0 });
   const [vertical, setVertical] = useState<number>(3);
   const [horizontal, setHorizontal] = useState<number>(0);
   const [fps, setFPS] = useState<number>(0);
@@ -21,7 +21,8 @@ export default function Home() {
     vertical,
     setVertical,
     horizontal, 
-    setHorizontal
+    setHorizontal,
+    fps
   }
 
   return (
@@ -33,7 +34,7 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <WebGLCanvas rotation={rotation} vertical={vertical} horizontal={horizontal} setFPS={setFPS}/>
-      <RotationControls posProps={posProps} fps={fps}/>
+      <RotationControls posProps={posProps}/>
     </>
   );
 }

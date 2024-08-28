@@ -7,9 +7,10 @@ import wallStencilFragShader from '../shaders/wallStencilFrag.frag';
 import lightVertShader from '../shaders/lightVert.vert';
 import lightFragShader from '../shaders/lightFrag.frag';
 import getMapData from './mapData';
-import { setUpProgram, setUniform, setAttributes, getUniform } from './wglUtils';
+import { Dispatch, SetStateAction } from 'react';
+import { setUpProgram, setUniform, setAttributes, getUniform, makeRenderTarget, updateRenderTarget } from './wglUtils';
 import { getWallPositions } from './geoUtils';
-import { Vec3, Vec2, Uniform, Package, Light } from './types';
+import { Vec3, Vec2, Uniform, Package, Light, RenderTarget } from './types';
 
 
 
@@ -18,6 +19,7 @@ class Engine {
     gl: WebGLRenderingContext | null;
     vertexShader: string = vertexShader;
     fragmentShader: string = fragmentShader;
+    renderTarget: RenderTarget | null = null;
     mapSize: Vec2;
     mapLights: Light[];
     mapWalls: Vec2[][];
@@ -29,6 +31,8 @@ class Engine {
     setFPS: Dispatch<SetStateAction<number>>;
     renderCount: number;
     img: HTMLImageElement;
+    renderLightsBool: boolean = true;
+    wallStencilValues: number[][] = [[]];
 
 
     constructor(canvas: HTMLCanvasElement, setFPS: Dispatch<SetStateAction<number>>) {
@@ -56,7 +60,7 @@ class Engine {
 
         // PARAMETERS
         const wallThickness = 0.1; // Thickness of walls from zero thickness wall definition
-        const lightRadius = 5; // Radius of light (in map units)
+        const lightRadius = 15; // Radius of light (in map units)
         const stressTest = false;
 
         const gl = this.gl;
@@ -67,6 +71,53 @@ class Engine {
         if (gl===null) { throw Error("Cannot get webgl context from canvas"); }
         
         console.log(this.img)
+
+        // Cheap UI Controller
+        let isRotating = false;
+
+        document.addEventListener('mousemove', (event: MouseEvent) => {
+            const mouseX = event.clientX/canvas.width * this.mapSize.x - this.mapSize.x/2;
+            const mouseY = (1 - event.clientY/canvas.height) * this.mapSize.y - this.mapSize.y/2;
+            
+            if (!isRotating) {
+                // move light
+                this.updateMousePosition(mouseY, mouseX);
+            } else {
+                // rotate light
+                let controllableLight = this.mapLights[this.mapLights.length-1];
+                let controllableLightPos = {
+                    x: controllableLight.position.x - this.mapSize.x/2,
+                    y: controllableLight.position.y - this.mapSize.y/2,
+                }
+                const angle = Math.atan2(mouseX - controllableLightPos.x, mouseY - controllableLightPos.y);
+                controllableLight.rotation = -angle + Math.PI/2;
+
+                const cheapLength = (Math.abs(mouseX - controllableLightPos.x) + Math.abs(mouseY - controllableLightPos.y)) / 2;
+                controllableLight.angle = cheapLength / (2*Math.PI);
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            canvas.width = canvas.clientWidth; // resize to client canvas
+            canvas.height = canvas.clientHeight; // resize to client canvas
+            gl.viewport(0, 0, canvas.width, canvas.height);
+            if (this.renderTarget) {
+                updateRenderTarget(gl, this.renderTarget, canvas.width, canvas.height)
+            }
+        });
+
+
+        document.addEventListener('keydown', (event: KeyboardEvent) => {
+            if (event.key === 'r' || event.key === 'R') {
+                isRotating = true;
+            }
+        });
+        
+        document.addEventListener('keyup', (event: KeyboardEvent) => {
+            if (event.key === 'r' || event.key === 'R') {
+                isRotating = false;
+            }
+        });
         
         // Clear Canvas
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
@@ -143,11 +194,14 @@ class Engine {
             "position": { "x": this.mapSize.x/2, "y": this.mapSize.y/2 },
             "range": lightRadius,
             "intensity": 1.0,
-            "color": "ffff48",
-            "angle": 0,
-            "rotation": 0,
+            "color": "ffffff",
+            "angle": 30 * Math.PI/180,
+            "rotation": -135 * Math.PI/180,
             "shadows": true
         }); 
+
+        // Init two render targets: one static that only re-renders when needed, another dynamic that renders every frame
+        this.renderTarget = makeRenderTarget(gl, canvas.width, canvas.height)
 
         // BACKGROUND PROGRAM
         let mapQuadPositions = [
@@ -199,7 +253,7 @@ class Engine {
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.img);
         gl.generateMipmap(gl.TEXTURE_2D);
         const uImage = gl.getUniformLocation(bgndProgram, 'uImage');
-        // gl.activeTexture(gl.TEXTURE0);
+        gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, bgndImage);
         gl.uniform1i(uImage, 0);
 
@@ -255,9 +309,9 @@ class Engine {
         // WALLS STENCIL PROGRAM
 
         // Get wall data ready for buffers
-        const wallStencilValues = getWallPositions(this.mapWalls, wallThickness, true);
-        const wallStencilPositions = wallStencilValues[0];
-        const wallStencilNormals = wallStencilValues[1];
+        this.wallStencilValues = getWallPositions(this.mapWalls, wallThickness, true);
+        const wallStencilPositions = this.wallStencilValues[0];
+        const wallStencilNormals = this.wallStencilValues[1];
 
         // Set up Position Attribute
         let wallStencilBuffers = setAttributes(gl, wallStencilPositions, wallStencilNormals);
@@ -374,6 +428,8 @@ class Engine {
         if (!this.gl) { throw Error('Lost WebGL Render Context') }
         const gl: WebGLRenderingContext = this.gl;
 
+        if (!this.renderTarget?.framebuffer) { return; }
+
         // clear
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -382,10 +438,8 @@ class Engine {
         uTime.val = this.getTime()/1000; // update uTime
 
         // update wall segments
-        // Get wall data ready for buffers
-        const wallStencilValues = getWallPositions(this.mapWalls, 0.1, true);
-        const wallStencilPositions = wallStencilValues[0];
-        const wallStencilNormals = wallStencilValues[1];
+        const wallStencilPositions = this.wallStencilValues[0];
+        const wallStencilNormals = this.wallStencilValues[1];
         let wallStencilIndex = this.packages.map(pck => pck.name).indexOf('wallStencil');
 
         // Bind Positions
@@ -395,17 +449,10 @@ class Engine {
         // Bind Normals
         gl.bindBuffer(gl.ARRAY_BUFFER, this.packages[wallStencilIndex].attribs.aNormal.attribBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(wallStencilNormals), gl.STATIC_DRAW);
-        
-        // Draw each package one by one
-        this.packages.forEach(pck => {
-            if (pck.stencil == 'none') {
-                this.drawPackage(gl, pck);
-            }
-        })
-
+            
         // let wallStencilIndex = this.packages.map(pck => pck.name).indexOf('wallStencil');
         let lightIndex = this.packages.map(pck => pck.name).indexOf('light');
-
+        
         // Uniform References
         let uTranslate = getUniform(this.packages, 'light', 'uTranslate');
         let uRadius = getUniform(this.packages, 'light', 'uRadius');
@@ -415,6 +462,13 @@ class Engine {
         let uRotation = getUniform(this.packages, 'light', 'uRotation');
         let uLightPoint = getUniform(this.packages, 'wallStencil', 'uLightPoint');
         
+        // Draw to frame buffer instead of canvas
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.renderTarget.framebuffer);
+        const ambient = (this.renderLightsBool) ? 0.3 : 1.0;
+        gl.clearColor(ambient, ambient, ambient, 1); 
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+
         for (let iLight=0; iLight<this.mapLights.length; iLight++) {
             let light = this.mapLights[iLight];
             let position = light.position;
@@ -427,7 +481,7 @@ class Engine {
                 parseInt(light.color.substring(2, 4), 16) / 255, 
                 parseInt(light.color.substring(4, 6), 16) / 255
             ]
-            uRadius.val = light.range; // light radius
+            uRadius.val = light.range*1.75; // light radius
             uTranslate.val = centeredPos; // light position for light shader
             uLightPoint.val = centeredPos; // light position for walls
             uColor.val = lightColor;
@@ -439,6 +493,13 @@ class Engine {
             this.drawPackage(gl, this.packages[wallStencilIndex]);
             this.drawPackage(gl, this.packages[lightIndex]);
         }
+
+        // Draw frame buffer to canvas
+        let bgndIndex = this.packages.map(pck => pck.name).indexOf('background');
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.blendFunc(gl.ONE, gl.ZERO);
+        this.drawPackage(gl, this.packages[bgndIndex]);
+        
 
         if (this.frameCount % 100 == 0) {
             // console.log('Renders per frame:', this.renderCount)
@@ -499,6 +560,9 @@ class Engine {
 
         // Update Uniforms
         if (pck.name == 'background') {
+            gl.activeTexture(gl.TEXTURE1);
+            gl.bindTexture(gl.TEXTURE_2D, this.renderTarget!.texture);
+            gl.uniform1i(gl.getUniformLocation(pck.program, "uRenderTarget"), 1);
             setUniform(gl, getUniform(this.packages, 'background', 'uResolution')); // update uResolution
             setUniform(gl, getUniform(this.packages, 'background', 'uTime')); // update uTime
         } else if (pck.name == 'wallStencil') {
@@ -531,8 +595,18 @@ class Engine {
         controllableLight.angle = rotation.x * (Math.PI/180);
         controllableLight.rotation = rotation.y * (Math.PI/180);
         let lightPackageIndex = this.packages.map(pck => pck.name).indexOf('light');
-        if (rotation.z > 180) { this.packages[lightPackageIndex].active = false }
-        else {  this.packages[lightPackageIndex].active = true }
+        if (rotation.z > 180) { this.renderLightsBool = false }
+        else {  this.renderLightsBool = true }
+    }
+
+    updateMousePosition(vertical: number, horizontal: number): void {
+        if (!this.mapLights || this.mapLights.length == 0) { return }
+        // Update light position
+        let controllableLight = this.mapLights[this.mapLights.length-1];
+        controllableLight.position = {
+            x: horizontal + this.mapSize.x/2,
+            y: vertical + this.mapSize.y/2
+        }
     }
 
     updateFPS(): void {
@@ -544,7 +618,7 @@ class Engine {
             // figure out how many frames passed and divide by time passed
             let deltaFrames = this.frameCount - this.lastFrameCount;
             let fps = (deltaFrames / deltaTime) * 1000;
-            this.setFPS(fps.toFixed(0));
+            this.setFPS(fps);
 
             // reset
             this.lastFrameTime = currentTime;

@@ -9,7 +9,7 @@ uniform vec2 uMapSize;
 
 #define PI 3.14159265359
 #define TWO_PI 6.28318530718
-#define ANGLE_FALLOFF 0.1
+#define ANGLE_FALLOFF 0.01
 
 void main()
 {
@@ -31,7 +31,11 @@ void main()
     float coneEffect = smoothstep(checkAngle - ANGLE_FALLOFF, checkAngle + ANGLE_FALLOFF, lightEffect);
 
     // Get attenuation
-    float att = 1.0 - smoothstep(0.0, uRadius, dist);
+    // float att = 1.0 - clamp((dist-uRadius/2.)/(uRadius/2.), 0., 1.); // half flat at 1 then linear fall off
+    //float att = 1.0 - smoothstep(uRadius/2., uRadius, dist); // smoothstep alternative has quicker fall off
+    float att = 1.0 - smoothstep(0., uRadius, dist); // smoothstep alternative has quicker fall off
+    
+    // float att = 1.0 - step(uRadius, dist); // full circle size for debug
 
     // Combine light values
     float strength = att * coneEffect * uIntensity;

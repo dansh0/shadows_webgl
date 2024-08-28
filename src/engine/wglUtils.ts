@@ -1,4 +1,4 @@
-import { AttribBuffers, Attrib, Uniform, Package } from './types';
+import { AttribBuffers, Attrib, Uniform, Package, RenderTarget } from './types';
 
 export const setUpProgram = (gl: WebGLRenderingContext, vertexShader: string, fragmentShader: string, buffers: AttribBuffers, uniforms: Uniform[]): WebGLProgram => {
     // Sets a WebGL program based on attribute, uniform, and shader data
@@ -98,10 +98,93 @@ export const setAttributes = (gl: WebGLRenderingContext, positions: number[], no
     return attribs
 }
 
+export const updateAttributes = (gl: WebGLRenderingContext, attribs: AttribBuffers, positions: number[], normals: number[]) => {
+    // Update attributes and metadata
+    // attribs must be of type returned from setAttributes
+    
+    // Update counts
+    attribs.aPosition.count = Math.floor(positions.length/2);
+    attribs.aNormal.count = Math.floor(normals.length/2);
+  
+    attribs.aPosition.attribBuffer = gl.createBuffer();
+    attribs.aNormal.attribBuffer = gl.createBuffer();
+  
+    // Bind Positions
+    gl.bindBuffer(gl.ARRAY_BUFFER, attribs.aPosition.attribBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.DYNAMIC_DRAW); 
+  
+    // Bind Normals
+    gl.bindBuffer(gl.ARRAY_BUFFER, attribs.aNormal.attribBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.DYNAMIC_DRAW); 
+  
+    return attribs
+}
+
 export const getUniform = (packages: Package[], packageName: string, uniformName: string) => {
     let pckIndex = packages.map(pck => pck.name).indexOf(packageName);
     let uniIndex = packages[pckIndex].uniforms.map(uni => uni.name).indexOf(uniformName);
     return packages[pckIndex].uniforms[uniIndex];
+}
+
+export const makeTexture = (gl: WebGLRenderingContext, width: number, height: number, level: number = 0, data: ArrayBufferView | null = null, format: number = gl.RGBA, type: number = gl.UNSIGNED_BYTE, scaling: number = gl.LINEAR, wrap: number = gl.CLAMP_TO_EDGE): WebGLTexture => {
+    // makes a texture and performs bindings
+    if (data == null && format == gl.RGBA) {
+      // make empty buffer
+      data = new Uint8Array(width * height * 4); // RGBA format
+    }
+    const texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, format, width, height, level, format, type, data) // tex, level, internalFormat, width, height, border, format, type, data
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, scaling);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap);
+
+    // Make sure everything is not null
+    if (!texture) {
+        throw new Error("Failed to create WebGL texture");
+    }
+
+    return texture;
+}
+  
+export const makeRenderTarget = (gl: WebGLRenderingContext, width: number, height: number, level: number = 0, attachPoint: number = gl.COLOR_ATTACHMENT0, data: ArrayBufferView | null = null, format: number = gl.RGBA, type: number = gl.UNSIGNED_BYTE, scaling: number = gl.LINEAR, wrap: number = gl.CLAMP_TO_EDGE): RenderTarget => {
+    // Render Targets are useful ways to render to a texture directly without rendering to canvas
+    
+    // Make a texture
+    const texture = makeTexture(gl, width, height, level, data, format, type, scaling, wrap);
+  
+    // Make a framebuffer and attach render target texture
+    const framebuffer = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, attachPoint, gl.TEXTURE_2D, texture, level);
+  
+    // Make a stencil buffer and attach it to the framebuffer
+    const stencilBuffer = gl.createRenderbuffer();
+    gl.bindRenderbuffer(gl.RENDERBUFFER, stencilBuffer);
+    gl.renderbufferStorage(gl.RENDERBUFFER, gl.STENCIL_INDEX8, width, height);
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.STENCIL_ATTACHMENT, gl.RENDERBUFFER, stencilBuffer);
+  
+    // Make sure everything is not null
+    if (!texture || !framebuffer || !stencilBuffer) {
+        throw new Error("Failed to create WebGL resources");
+    }
+
+    return {
+        texture,
+        framebuffer,
+        stencilBuffer
+    }
+  
+}
+  
+export const updateRenderTarget = (gl: WebGLRenderingContext, renderTarget: RenderTarget, width: number, height: number, level: number = 0, attachPoint: number = gl.COLOR_ATTACHMENT0, data: ArrayBufferView | null = null, format: number = gl.RGBA, type: number = gl.UNSIGNED_BYTE, scaling: number = gl.LINEAR, wrap: number = gl.CLAMP_TO_EDGE) => {
+    // Updates the render target, allowing for size or other changes
+    renderTarget.texture = makeTexture(gl, width, height, level, data, format, type, scaling, wrap);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, renderTarget.framebuffer);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, attachPoint, gl.TEXTURE_2D, renderTarget.texture, level);
+    gl.bindRenderbuffer(gl.RENDERBUFFER, renderTarget.stencilBuffer);
+    gl.renderbufferStorage(gl.RENDERBUFFER, gl.STENCIL_INDEX8, width, height);
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.STENCIL_ATTACHMENT, gl.RENDERBUFFER, renderTarget.stencilBuffer);
 }
 
 export const getGLState = (gl: WebGLRenderingContext) => {

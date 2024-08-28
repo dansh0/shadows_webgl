@@ -1,4 +1,5 @@
 import React, { useState, ChangeEvent } from 'react';
+import { Dispatch, SetStateAction } from 'react';
 
 interface Vec3 {
     x: number;
@@ -11,17 +12,17 @@ interface RotationControlsProps {
         rotation: Vec3;
         setRotation: Dispatch<SetStateAction<Vec3>>;
         vertical: number;
-        setVertical: Dispatch<SetStateAction<Number>>;
+        setVertical: Dispatch<SetStateAction<number>>;
         horizontal: number;
-        setHorizontal: Dispatch<SetStateAction<Number>>;
+        setHorizontal: Dispatch<SetStateAction<number>>;
+        fps: number;
     }
-    fps: number;
 }
 
 const RotationControls: React.FC<RotationControlsProps> = (props) => {
     const posProps = props.posProps;
+    if (!posProps) { return }
     const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
-    const fps = props.fps;
 
     const handleSliderChange = (axis: 'x' | 'y' | 'z') => (event: ChangeEvent<HTMLInputElement>) => {
         // create copy, set value, trigger event
@@ -69,7 +70,7 @@ const RotationControls: React.FC<RotationControlsProps> = (props) => {
                         onChange={handleSliderChange('y')}
                     />
                 </div>
-                <div className="control">
+                {/* <div className="control">
                     <label>Vert: {posProps.vertical}</label>
                     <input
                         type="range"
@@ -96,7 +97,7 @@ const RotationControls: React.FC<RotationControlsProps> = (props) => {
                             (event) => { posProps.setHorizontal(parseFloat(event.target.value)); }
                         }
                     />
-                </div>
+                </div> */}
                 <div className="toggle-control">
                     <label>
                         Light On/Off
@@ -104,13 +105,15 @@ const RotationControls: React.FC<RotationControlsProps> = (props) => {
                             type="checkbox"
                             checked={posProps.rotation.z === 360}
                             onChange={handleSliderChange('z')}
-                        />
+                            />
                     </label>
                 </div>
                 <h5>Stats</h5>
                 <div className="fps">
-                    <h6>{fps} FPS</h6>
+                    <h6>{posProps.fps.toFixed(0)} FPS</h6>
                 </div>
+                <label>Mouse for position</label><br/>
+                <label>Hold "R" w/ mouse for rotation</label>
             </div>
         </div>
     );

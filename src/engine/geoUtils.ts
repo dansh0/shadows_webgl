@@ -43,6 +43,8 @@ export const getWallPositions = (mapWalls: Vec2[][], wallThickness: number, shad
                 lastSegPoint = mapWalls[iWall][iSeg];
             } else {
                 segPoint = mapWalls[iWall][iSeg];
+
+                if (!lastSegPoint) {continue}
                 
                 // Fill two triangle
 

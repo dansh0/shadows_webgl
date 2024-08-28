@@ -1678,7 +1678,7 @@ const getMapData = () => {
 		},
 		"range": 3.375,
 		"intensity": 0.5,
-		"color": "ff575112",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1688,7 +1688,7 @@ const getMapData = () => {
 		},
 		"range": 3.375,
 		"intensity": 0.5,
-		"color": "ff575112",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1698,7 +1698,7 @@ const getMapData = () => {
 		},
 		"range": 4.5,
 		"intensity": 0.5,
-		"color": "ff462D00",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1708,7 +1708,7 @@ const getMapData = () => {
 		},
 		"range": 4.5,
 		"intensity": 0.5,
-		"color": "ff462D00",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1718,7 +1718,7 @@ const getMapData = () => {
 		},
 		"range": 4.5,
 		"intensity": 0.5,
-		"color": "ff6A3D00",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1728,7 +1728,7 @@ const getMapData = () => {
 		},
 		"range": 4.5,
 		"intensity": 0.5,
-		"color": "ff6A3D00",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1738,7 +1738,7 @@ const getMapData = () => {
 		},
 		"range": 4.5,
 		"intensity": 0.5,
-		"color": "ff462D00",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1748,7 +1748,7 @@ const getMapData = () => {
 		},
 		"range": 4.5,
 		"intensity": 0.5,
-		"color": "ff462D00",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1758,7 +1758,7 @@ const getMapData = () => {
 		},
 		"range": 4.5,
 		"intensity": 0.5,
-		"color": "ff462D00",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1768,7 +1768,7 @@ const getMapData = () => {
 		},
 		"range": 4.5,
 		"intensity": 0.5,
-		"color": "ff6A3D00",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1778,7 +1778,7 @@ const getMapData = () => {
 		},
 		"range": 4.5,
 		"intensity": 0.5,
-		"color": "ff462D00",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1788,7 +1788,7 @@ const getMapData = () => {
 		},
 		"range": 4.5,
 		"intensity": 0.5,
-		"color": "ff462D00",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1798,7 +1798,7 @@ const getMapData = () => {
 		},
 		"range": 4.5,
 		"intensity": 0.5,
-		"color": "ff462D00",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1808,7 +1808,7 @@ const getMapData = () => {
 		},
 		"range": 4.5,
 		"intensity": 0.5,
-		"color": "ff462D00",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1818,7 +1818,7 @@ const getMapData = () => {
 		},
 		"range": 4.5,
 		"intensity": 0.5,
-		"color": "ff8B4100",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1828,7 +1828,7 @@ const getMapData = () => {
 		},
 		"range": 4.5,
 		"intensity": 0.5,
-		"color": "ff462D00",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1838,7 +1838,7 @@ const getMapData = () => {
 		},
 		"range": 4.5,
 		"intensity": 0.5,
-		"color": "ff462D00",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1848,7 +1848,7 @@ const getMapData = () => {
 		},
 		"range": 4.5,
 		"intensity": 0.5,
-		"color": "ff462D00",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1858,7 +1858,7 @@ const getMapData = () => {
 		},
 		"range": 4.5,
 		"intensity": 0.5,
-		"color": "ff754500",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1868,7 +1868,7 @@ const getMapData = () => {
 		},
 		"range": 2.25,
 		"intensity": 0.5,
-		"color": "ff8B4800",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1878,7 +1878,7 @@ const getMapData = () => {
 		},
 		"range": 2.25,
 		"intensity": 0.5,
-		"color": "ff8B4800",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1888,7 +1888,7 @@ const getMapData = () => {
 		},
 		"range": 2.25,
 		"intensity": 0.5,
-		"color": "ff8B4800",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1898,7 +1898,7 @@ const getMapData = () => {
 		},
 		"range": 2.25,
 		"intensity": 0.5,
-		"color": "ff8B4800",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1908,7 +1908,7 @@ const getMapData = () => {
 		},
 		"range": 2.25,
 		"intensity": 0.5,
-		"color": "ff8B4800",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1918,7 +1918,7 @@ const getMapData = () => {
 		},
 		"range": 2.25,
 		"intensity": 0.5,
-		"color": "ff8B4800",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1928,7 +1928,7 @@ const getMapData = () => {
 		},
 		"range": 2.25,
 		"intensity": 0.5,
-		"color": "ff8B4800",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1938,7 +1938,7 @@ const getMapData = () => {
 		},
 		"range": 2.25,
 		"intensity": 0.5,
-		"color": "ff8B4800",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1948,7 +1948,7 @@ const getMapData = () => {
 		},
 		"range": 2.25,
 		"intensity": 0.5,
-		"color": "ff8B4800",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1958,7 +1958,7 @@ const getMapData = () => {
 		},
 		"range": 2.25,
 		"intensity": 0.5,
-		"color": "ff8B4800",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1968,7 +1968,7 @@ const getMapData = () => {
 		},
 		"range": 2.25,
 		"intensity": 0.5,
-		"color": "ff8B4800",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1978,7 +1978,7 @@ const getMapData = () => {
 		},
 		"range": 2.25,
 		"intensity": 0.5,
-		"color": "ff8B4800",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1988,7 +1988,7 @@ const getMapData = () => {
 		},
 		"range": 2.25,
 		"intensity": 0.5,
-		"color": "ff8B4800",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -1998,7 +1998,7 @@ const getMapData = () => {
 		},
 		"range": 2.25,
 		"intensity": 0.5,
-		"color": "ff8B4800",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -2008,7 +2008,7 @@ const getMapData = () => {
 		},
 		"range": 2.25,
 		"intensity": 0.5,
-		"color": "ff8B4800",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -2018,7 +2018,7 @@ const getMapData = () => {
 		},
 		"range": 2.25,
 		"intensity": 0.5,
-		"color": "ff8B4800",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -2028,7 +2028,7 @@ const getMapData = () => {
 		},
 		"range": 2.25,
 		"intensity": 0.5,
-		"color": "ff8B4800",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -2038,7 +2038,7 @@ const getMapData = () => {
 		},
 		"range": 2.25,
 		"intensity": 0.5,
-		"color": "ff8B4800",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -2048,7 +2048,7 @@ const getMapData = () => {
 		},
 		"range": 2.25,
 		"intensity": 0.5,
-		"color": "ff8B4800",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -2058,7 +2058,7 @@ const getMapData = () => {
 		},
 		"range": 1.125,
 		"intensity": 0.5,
-		"color": "ff575112",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -2068,7 +2068,7 @@ const getMapData = () => {
 		},
 		"range": 1.125,
 		"intensity": 0.5,
-		"color": "ff575112",
+		"color": "ffFFEFCF",
 		"shadows": true
 		},
 		{
@@ -2078,7 +2078,7 @@ const getMapData = () => {
 		},
 		"range": 1.125,
 		"intensity": 0.5,
-		"color": "ff575112",
+		"color": "ffFFEFCF",
 		"shadows": true
 		}
 	]

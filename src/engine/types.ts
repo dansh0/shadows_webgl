@@ -48,3 +48,9 @@ export interface Light {
     "color": string,
     "shadows": boolean
 }
+
+export interface RenderTarget {
+    texture: WebGLTexture;
+    framebuffer: WebGLFramebuffer;
+    stencilBuffer: WebGLRenderbuffer;
+}

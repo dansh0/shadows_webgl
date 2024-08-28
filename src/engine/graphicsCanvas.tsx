@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from 'react'
+import { Dispatch, SetStateAction } from 'react';
 import Engine from './engine';
 
 interface Vec3 {
@@ -24,12 +25,12 @@ const WebGLCanvas:React.FC<WGLCanvasProps> = (props) => {
 
     // run once on mounted
     useEffect(() => {
-        engine.current = new Engine(canvasRef.current, setFPS);
+        engine.current = new Engine(canvasRef.current!, setFPS);
     }, []);
 
     // update parameters
     useEffect(() => {
-        engine.current.updatePosition(vertical, horizontal, rotation);
+        engine.current!.updatePosition(vertical, horizontal, rotation);
     }, [vertical, horizontal, rotation]);
     
     return <canvas className="webglCanvas" ref={canvasRef} />
